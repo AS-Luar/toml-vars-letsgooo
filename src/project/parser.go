@@ -2,12 +2,16 @@ package tmvar
 
 import (
 	"fmt"
+	"os"
 	"regexp"
 	"strings"
 )
 
 // variablePattern matches {{section.key}} patterns
 var variablePattern = regexp.MustCompile(`\{\{([^}]+)\}\}`)
+
+// envPattern matches {{ENV.VAR:-default}} patterns
+var envPattern = regexp.MustCompile(`^ENV\.([A-Z_][A-Z0-9_]*)(?::-(.*))?$`)
 
 // resolveVariables processes a TOML data structure and resolves all {{variable}} references
 func resolveVariables(data map[string]interface{}) (map[string]interface{}, error) {
@@ -83,7 +87,31 @@ func resolveStringVariables(str string, data map[string]interface{}) (string, bo
 		placeholder := match[0] // Full match: {{section.key}}
 		variablePath := match[1] // Just the path: section.key
 
-		// Resolve the variable
+		// Check if this is an environment variable
+		if envMatch := envPattern.FindStringSubmatch(variablePath); envMatch != nil {
+			envVar := envMatch[1]
+			defaultValue := ""
+			if len(envMatch) > 2 && envMatch[2] != "" {
+				defaultValue = envMatch[2]
+			}
+
+			value := os.Getenv(envVar)
+			if value == "" {
+				value = defaultValue
+				// If default value contains variables, it will be resolved in next pass
+				if strings.Contains(value, "{{") {
+					// Replace this ENV variable with its default value for next pass
+					result = strings.ReplaceAll(result, placeholder, value)
+					continue
+				}
+			}
+
+			// Replace the placeholder with the resolved environment value
+			result = strings.ReplaceAll(result, placeholder, value)
+			continue
+		}
+
+		// Resolve internal variable
 		value, found := resolveVariablePath(variablePath, data)
 		if !found {
 			return "", hasVariables, fmt.Errorf("variable '%s' referenced but not found\n\nAvailable variables:\n%s",

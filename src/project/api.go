@@ -2,6 +2,7 @@ package tmvar
 
 import (
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -53,6 +54,40 @@ func GetDuration(key string) time.Duration {
 	result, err := time.ParseDuration(value)
 	if err != nil {
 		panic("variable \"" + key + "\" is not a valid duration: " + value)
+	}
+	return result
+}
+
+// GetStringSlice retrieves a comma-separated string value as a slice, panics if not found
+func GetStringSlice(key string) []string {
+	value := Get(key)
+	if value == "" {
+		return []string{}
+	}
+
+	// Split on comma and trim whitespace
+	parts := strings.Split(value, ",")
+	result := make([]string, len(parts))
+	for i, part := range parts {
+		result[i] = strings.TrimSpace(part)
+	}
+	return result
+}
+
+// GetIntSlice retrieves a comma-separated string value as an int slice, panics if not found or invalid
+func GetIntSlice(key string) []int {
+	stringSlice := GetStringSlice(key)
+	result := make([]int, len(stringSlice))
+
+	for i, str := range stringSlice {
+		if str == "" {
+			continue // Skip empty strings
+		}
+		num, err := strconv.Atoi(str)
+		if err != nil {
+			panic("variable \"" + key + "\" contains invalid integer: " + str)
+		}
+		result[i] = num
 	}
 	return result
 }
@@ -117,6 +152,53 @@ func GetDurationOr(key string, defaultValue time.Duration) time.Duration {
 	result, err := time.ParseDuration(value)
 	if err != nil {
 		return defaultValue
+	}
+	return result
+}
+
+// GetStringSliceOr retrieves a comma-separated string value as a slice, returns default if not found
+func GetStringSliceOr(key string, defaultValue []string) []string {
+	value, err := getValue(key)
+	if err != nil {
+		return defaultValue
+	}
+	if value == "" {
+		return []string{}
+	}
+
+	// Split on comma and trim whitespace
+	parts := strings.Split(value, ",")
+	result := make([]string, len(parts))
+	for i, part := range parts {
+		result[i] = strings.TrimSpace(part)
+	}
+	return result
+}
+
+// GetIntSliceOr retrieves a comma-separated string value as an int slice, returns default if not found or invalid
+func GetIntSliceOr(key string, defaultValue []int) []int {
+	value, err := getValue(key)
+	if err != nil {
+		return defaultValue
+	}
+	if value == "" {
+		return []int{}
+	}
+
+	// Split on comma and trim whitespace
+	parts := strings.Split(value, ",")
+	result := make([]int, len(parts))
+
+	for i, str := range parts {
+		str = strings.TrimSpace(str)
+		if str == "" {
+			continue // Skip empty strings
+		}
+		num, err := strconv.Atoi(str)
+		if err != nil {
+			return defaultValue // Return default if any conversion fails
+		}
+		result[i] = num
 	}
 	return result
 }
