@@ -1,4 +1,4 @@
-module github.com/deprecated-luar/toml-vars-letsgooo
+module github.com/DeprecatedLuar/toml-vars-letsgooo
 
 go 1.24.6
 

@@ -53,153 +53,163 @@ This project serves as a **Go learning vehicle** with these educational goals:
 
 ## Architecture Overview
 
-This is a **framework-based project** with strict architectural separation:
+This is a **standalone Go library** with clean, simple architecture:
 
-### Primary Architecture (`src/`)
+### Library Structure
 
-- **`src/modules/`** - Reusable framework components (cross-project utilities)
-  - `paths/` - Central path management with TOML-based configuration
-  - `logging/` - Emoji-based logging system with environment awareness
-  - `errors/` - Standardized error handling
-  - `server/` - Server infrastructure components
+```
+toml-vars-letsgooo/
+├── api.go              # Public API (Get, GetInt, GetBool, etc.)
+├── cache.go            # File monitoring and smart caching
+├── discovery.go        # Multi-file discovery and conflict resolution
+├── parser.go           # Variable substitution engine
+├── tmvar_test.go       # Comprehensive test suite
+├── go.mod              # Module definition
+├── go.sum              # Dependencies
+└── other/              # Documentation and specs
+```
 
-- **`src/project/`** - Application-specific business logic (tmvar library implementation)
-  - External API (`tmvar.Get()`, `tmvar.GetInt()`, etc.)
-  - File discovery system (recursive *.toml search)
-  - Environment variable injection (`{{ENV.VAR:-default}}`)
-  - Internal variable resolution (`{{section.key}}`)
-  - Smart file monitoring and caching
-  - Type conversion utilities
+### Core Components
 
-- **`src/settings/`** - Centralized configuration management
-  - `settings.toml` - Main configuration file
-  - `.env` - Environment variables
+- **`api.go`** - External API providing `os.Getenv()`-like interface
+  - `Get()`, `GetInt()`, `GetBool()`, `GetDuration()`, etc.
+  - `GetOr()` variants with default values
+  - `GetStringSlice()`, `GetIntSlice()` for arrays
+  - `Exists()` for key existence checking
 
-### Supporting Structure (`other/`)
+- **`discovery.go`** - Multi-file TOML discovery and conflict resolution
+  - Recursive `*.toml` file discovery
+  - Smart conflict detection across files
+  - File namespacing: `filename.section.key` syntax
+  - Cross-file variable resolution
 
-- **`other/documentation/`** - Project specifications and design docs
-- **`other/testing/`** - Testing utilities and infrastructure
-- **`other/report/`** - Development workflow tracking
-  - `active/` - Current ongoing tasks
-  - `complete/` - Historical completed work
+- **`parser.go`** - Variable substitution engine
+  - Internal variables: `{{section.key}}`
+  - Environment injection: `{{ENV.VAR:-default}}`
+  - Multi-pass resolution with circular dependency detection
+  - Cross-file variable references
+
+- **`cache.go`** - Performance optimization
+  - File modification time tracking
+  - Smart cache invalidation
+  - Always-current values with minimal overhead
 
 ## Key Architectural Principles
 
-### Framework Module Standards
-- **Zero project dependencies** - Modules must be reusable across projects
-- **250-line file limit** - Enforced for maintainability
-- **Single responsibility** - Each module has one clear purpose
-- **Dependency injection patterns** - Clean interfaces between components
-- **Standardized responses** - `{success, data, error}` format
+### Standalone Library Standards
+- **Zero external dependencies** - Only uses `github.com/BurntSushi/toml`
+- **Single purpose focus** - TOML variable substitution only
+- **Clean API design** - Works exactly like `os.Getenv()`
+- **Self-contained** - No framework dependencies or configuration required
 
-### Path Management Philosophy
-- **Zero hardcoded paths** - All paths via centralized TOML configuration
-- **Variable substitution** - `{base.variable}` and `{runtime_variable}` patterns
-- **Project root discovery** - Automatic detection via `go.mod`, `.git/`, etc.
-- **Performance caching** - LRU cache with 1000 entry maximum
+### Multi-File Philosophy
+- **Automatic discovery** - Finds all `*.toml` files in project automatically
+- **Smart conflict resolution** - No prefix needed unless conflicts exist
+- **File namespacing** - `filename.section.key` syntax for explicit references
+- **Cross-file variables** - `{{database.host}}` works across any file
+- **Zero configuration** - Works out of the box
 
-### Logging Standards
-- **Single logger per project** - No multiple logging libraries
-- **Emoji-based categorization** - Visual efficiency (🔵 info, ❌ error, ✅ success, etc.)
-- **Environment awareness** - All logs in development, silent in production
-- **Component tagging** - `[ComponentName]` prefix for all log entries
+### Variable Resolution Standards
+- **Internal variables** - `{{section.key}}` references within and across files
+- **Environment injection** - `{{ENV.VAR:-default}}` with explicit defaults
+- **Multi-pass resolution** - Handles forward references and dependencies
+- **Circular dependency detection** - Clear error messages for invalid references
+- **Performance optimized** - File monitoring with timestamp-based caching
 
 ## Development Commands
 
 ### Go Development Workflow
 ```bash
-# Initialize Go module (if not already done)
-go mod init github.com/yourusername/toml-vars-letsgooo
+# Module is already initialized
+# github.com/DeprecatedLuar/toml-vars-letsgooo
 
-# Add required dependencies
-go get github.com/BurntSushi/toml
+# Run all tests (20 test cases)
+go test -v
 
-# Run tests
-go test ./...
-
-# Run specific test
-go test ./src/project -v
+# Run specific test pattern
+go test -v -run TestMultiFile
 
 # Build the library
-go build ./...
-
-# Run linting (install golangci-lint first)
-golangci-lint run
+go build
 
 # Format code
 go fmt ./...
+
+# Run linting (if golangci-lint installed)
+golangci-lint run
 ```
 
-### Framework Validation Commands
+### Library Usage
 ```bash
-# Validate framework structure (custom script needed)
-# Should verify all .purpose.md files exist and framework compliance
-
-# Check path configuration
-# Validate paths.toml against actual directory structure
-
-# Verify logging integration
-# Ensure all modules use centralized logging system
+# Install in another project
+go get github.com/DeprecatedLuar/toml-vars-letsgooo
 ```
 
-## Implementation Strategy
+```go
+// Import and use
+import "github.com/DeprecatedLuar/toml-vars-letsgooo"
 
-### Phase 1: Core External API & File Discovery (Week 1)
-1. Implement external API: `tmvar.Get()`, `tmvar.GetInt()`, `tmvar.GetBool()`
-2. Build recursive file discovery system (*.toml search)
-3. Add smart file monitoring with timestamp-based caching
-4. Basic environment variable injection: `{{ENV.VAR:-default}}`
-5. Type conversion utilities
+func main() {
+    port := tmvar.GetInt("server.port")
+    host := tmvar.Get("database.host")
+    timeout := tmvar.GetDurationOr("api.timeout", 30*time.Second)
+}
+```
 
-### Phase 2: Internal Variable Resolution (Week 2)
-1. Implement `{{section.variable}}` reference resolution
-2. Multi-pass resolution for forward references
-3. Circular dependency detection and clear error messages
-4. Nested variable resolution (`{{a}}/{{b}}` where `b` references `{{c}}`)
-5. Comprehensive error handling
+## Implementation Status
 
-### Phase 3: Advanced Features & Conflict Resolution (Week 3)
-1. File conflict resolution (`filename.section.key` syntax)
-2. Advanced type handling (`GetDuration`, slices)
-3. `GetOr` functions with defaults
-4. Performance optimization for large projects
-5. Comprehensive test suite
+### ✅ Phase 1: Core External API & File Discovery (Completed)
+- ✅ External API: `tmvar.Get()`, `tmvar.GetInt()`, `tmvar.GetBool()`
+- ✅ Recursive file discovery system (`*.toml` search)
+- ✅ Smart file monitoring with timestamp-based caching
+- ✅ Environment variable injection: `{{ENV.VAR:-default}}`
+- ✅ Complete type conversion utilities
 
-### Phase 4: Framework Integration & Polish (Week 4)
-1. Integrate with modules/paths for configuration file handling
-2. Use modules/logging for debug output
-3. Apply modules/errors for standardized error handling
-4. Professional API design and documentation
-5. Package structure for potential open-source release
+### ✅ Phase 2: Internal Variable Resolution (Completed)
+- ✅ `{{section.variable}}` reference resolution
+- ✅ Multi-pass resolution for forward references
+- ✅ Circular dependency detection with clear error messages
+- ✅ Nested variable resolution (`{{a}}/{{b}}` where `b` references `{{c}}`)
+- ✅ Comprehensive error handling
 
-## Critical Implementation Notes
+### ✅ Phase 3: Environment Variable Integration (Completed)
+- ✅ `{{ENV.VAR:-default}}` injection using same substitution engine
+- ✅ Mixed environment and internal variable scenarios
+- ✅ Git-trackable environment variable usage
+- ✅ Advanced type handling (`GetDuration`, slices)
+- ✅ `GetOr` functions with defaults
+
+### ✅ Phase 4: Multi-File Discovery & Conflict Resolution (Completed)
+- ✅ Multiple TOML files with conflict handling
+- ✅ File namespacing: `filename.section.key` syntax
+- ✅ Smart conflict detection and resolution
+- ✅ Cross-file variable resolution
+- ✅ Professional API design and documentation
+- ✅ **Production-ready standalone library**
+
+## Library Features
 
 ### Variable Resolution Rules
 - **Environment variables**: `{{ENV.VAR:-default}}` syntax with explicit defaults
-- **Internal variables**: `{{section.variable}}` reference resolution
-- **Multi-pass resolution**: Support forward references with dependency resolution
+- **Internal variables**: `{{section.variable}}` reference resolution within and across files
+- **Multi-pass resolution**: Support forward references with automatic dependency resolution
 - **Circular dependency detection**: Clear error messages for `A → B → A` cycles
 - **File conflict resolution**: `filename.section.key` syntax for explicit file references
+- **Smart conflict detection**: No prefix needed unless actual conflicts exist
 
-### Technical Approach
-- **External API first**: `tmvar.Get()` functions that work like `os.Getenv()`
-- **File discovery**: Recursive search for *.toml files in project directory
-- **Smart caching**: Timestamp-based file monitoring for always-current values
-- **Two-phase resolution**: Environment injection → Internal variable resolution
-- **BurntSushi/toml foundation**: Use proven TOML parser, focus on library logic
+### Multi-File Support
+- **Automatic discovery**: Finds all `*.toml` files in project recursively
+- **Cross-file variables**: `{{database.host}}` works from any file to any file
+- **Conflict resolution**: Clear error messages with suggested explicit syntax
+- **File namespacing**: `app.toml` becomes `app.section.key` for conflicts
+- **Zero configuration**: Works immediately without setup
 
-### Framework Compliance Requirements
-- All source files in `src/project/` for business logic
-- Use `modules/logging` for all debug output (no direct fmt.Println)
-- Leverage `modules/paths` for any file system operations
-- Follow standardized error responses from `modules/errors`
-- Maintain 250-line file limit for all modules
-
-### Dependencies Strategy
-- **Core TOML parsing**: `github.com/BurntSushi/toml`
-- **No external logging libraries** - use framework modules/logging
-- **No external path libraries** - use framework modules/paths
-- **Minimal dependencies** - prefer standard library when possible
+### Standalone Architecture
+- **Single dependency**: Only `github.com/BurntSushi/toml` for parsing
+- **Self-contained**: No framework dependencies or external configuration
+- **Standard library**: Uses Go's built-in file system, regex, and string processing
+- **Clean imports**: Direct import at root level `github.com/DeprecatedLuar/toml-vars-letsgooo`
+- **Production ready**: Comprehensive test coverage (20+ test scenarios)
 
 ## Learning Focus Areas
 
@@ -233,40 +243,87 @@ go fmt ./...
 - Error condition handling: undefined variables, malformed syntax
 - Performance with large TOML files and many variables
 
-## File Structure Guidelines
+## Usage Examples
 
-### Purpose File System
-Every directory contains `.purpose.md` explaining its intent, scope, and dependencies. Always read these files to understand architectural context before making changes.
+### Basic Usage
+```toml
+# config.toml
+[server]
+port = 3000
+host = "localhost"
 
-### Documentation Integration
-- Main project specification: `other/documentation/TOML-VARIABLE-SYSTEM.md`
-- Module specifications: `src/modules/{module}/doc.md`
-- Purpose definitions: `{directory}/.purpose.md`
+[database]
+url = "postgres://{{server.host}}:5432/myapp"
+```
 
-### Development Workflow
-- Use `other/report/active/` for tracking ongoing implementation tasks
-- Move completed analysis to `other/report/complete/`
-- Update documentation as features are implemented
+```go
+port := tmvar.GetInt("server.port")           // Returns: 3000
+dbURL := tmvar.Get("database.url")            // Returns: "postgres://localhost:5432/myapp"
+```
+
+### Multi-File with Conflicts
+```toml
+# app.toml
+[server]
+port = 3000
+
+# api.toml  
+[server]
+port = 8080
+```
+
+```go
+// This causes helpful error:
+tmvar.Get("server.port")  // Error: "found in multiple files, use app.server.port or api.server.port"
+
+// Explicit syntax works:
+appPort := tmvar.GetInt("app.server.port")    // Returns: 3000
+apiPort := tmvar.GetInt("api.server.port")    // Returns: 8080
+```
+
+### Environment Variables
+```toml
+[server]
+port = "{{ENV.PORT:-3000}}"
+host = "{{ENV.HOST:-localhost}}"
+```
+
+## Library Distribution
+
+### Installation
+```bash
+go get github.com/DeprecatedLuar/toml-vars-letsgooo
+```
+
+### Import
+```go
+import "github.com/DeprecatedLuar/toml-vars-letsgooo"
+```
 
 ## Competitive Positioning
 
 **vs. Viper**: 10x lighter, focused solely on internal TOML variable substitution
-**vs. External templates**: No build step, no external tools required
-**vs. Environment variables**: Everything in one git-trackable TOML file
-**vs. Manual string replacement**: Type-safe, structured, maintainable
+**vs. External templates**: No build step, no external tools required  
+**vs. Environment variables**: Everything in git-trackable TOML files with env override capability
+**vs. Manual string replacement**: Type-safe, structured, maintainable with automatic conflict detection
 
-## Success Metrics
+## Technical Achievements
 
-### Technical Success
-- Clean API that works with any TOML structure
-- Comprehensive variable substitution without external dependencies
-- Clear error messages for all edge cases
-- Zero breaking changes when upgrading from simple to flexible resolution
+### Production Ready Features
+- ✅ Clean API that works like `os.Getenv()`
+- ✅ Multi-file TOML support with smart conflict resolution
+- ✅ Cross-file variable references
+- ✅ Environment variable injection with defaults
+- ✅ Comprehensive error messages for all edge cases
+- ✅ Zero configuration required
+- ✅ Complete type system (string, int, bool, duration, slices)
+- ✅ 20+ comprehensive test scenarios
 
-### Learning Success
-- Deep understanding of Go's type system and interface patterns
-- Mastery of string processing and regular expressions
-- Experience with recursive data structure processing
-- Professional Go package development skills
+### Code Quality
+- ✅ Single external dependency (`github.com/BurntSushi/toml`)
+- ✅ Professional Go package structure
+- ✅ Clean, readable, maintainable codebase
+- ✅ Follows Go conventions and best practices
+- ✅ Ready for open-source distribution
 
-This project represents both a legitimate gap-filling Go library and an intensive Go learning experience, built with professional framework architecture for long-term maintainability and potential open-source distribution.
+This library successfully fills a gap in the Go ecosystem by providing simple, efficient internal TOML variable substitution with multi-file support and smart conflict resolution.
