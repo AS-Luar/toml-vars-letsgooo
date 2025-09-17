@@ -1,0 +1,14 @@
+[server]
+port = 3000
+host = "localhost"
+debug = true
+
+[database]
+url = "postgres://localhost:5432/tmvar_test"
+timeout = "30s"
+max_connections = 100
+
+[features]
+auth_enabled = true
+cache_enabled = false
+log_level = "info"
