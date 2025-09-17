@@ -19,7 +19,7 @@ func GetInt(key string) int {
 	value := Get(key)
 	result, err := strconv.Atoi(value)
 	if err != nil {
-		panic("Error: Variable \"" + key + "\" is not a valid integer: " + value)
+		panic("variable \"" + key + "\" is not a valid integer: " + value)
 	}
 	return result
 }
@@ -33,7 +33,7 @@ func GetBool(key string) bool {
 	case "false", "False", "FALSE", "no", "No", "NO", "0":
 		return false
 	default:
-		panic("Error: Variable \"" + key + "\" is not a valid boolean: " + value)
+		panic("variable \"" + key + "\" is not a valid boolean: " + value)
 	}
 }
 
@@ -42,7 +42,7 @@ func GetFloat(key string) float64 {
 	value := Get(key)
 	result, err := strconv.ParseFloat(value, 64)
 	if err != nil {
-		panic("Error: Variable \"" + key + "\" is not a valid float: " + value)
+		panic("variable \"" + key + "\" is not a valid float: " + value)
 	}
 	return result
 }
@@ -52,7 +52,7 @@ func GetDuration(key string) time.Duration {
 	value := Get(key)
 	result, err := time.ParseDuration(value)
 	if err != nil {
-		panic("Error: Variable \"" + key + "\" is not a valid duration: " + value)
+		panic("variable \"" + key + "\" is not a valid duration: " + value)
 	}
 	return result
 }

@@ -251,7 +251,7 @@ b = "{{circular.a}}"
 		} else {
 			// Check that the error message mentions circular dependency
 			errorMsg := fmt.Sprintf("%v", r)
-			if !strings.Contains(errorMsg, "Circular dependency") {
+			if !strings.Contains(errorMsg, "circular dependency") {
 				t.Errorf("Expected circular dependency error, got: %v", errorMsg)
 			}
 		}

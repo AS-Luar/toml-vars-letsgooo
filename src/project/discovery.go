@@ -126,7 +126,7 @@ func findValueInFiles(key string) (string, error) {
 	}
 
 	if len(files) == 0 {
-		return "", fmt.Errorf("Error: Variable \"%s\" not found\n\nNo TOML files found in project", key)
+		return "", fmt.Errorf("variable \"%s\" not found\n\nNo TOML files found in project", key)
 	}
 
 	var searchedFiles []string
@@ -143,7 +143,7 @@ func findValueInFiles(key string) (string, error) {
 		// Resolve variables within this file
 		resolvedData, err := resolveVariables(data)
 		if err != nil {
-			return "", fmt.Errorf("Error resolving variables in %s: %v", file, err)
+			return "", fmt.Errorf("error resolving variables in %s: %v", file, err)
 		}
 
 		// Check if key exists in this file after variable resolution
@@ -156,7 +156,7 @@ func findValueInFiles(key string) (string, error) {
 	}
 
 	// Generate helpful error message
-	errorMsg := fmt.Sprintf("Error: Variable \"%s\" not found\n\nSearched in:", key)
+	errorMsg := fmt.Sprintf("variable \"%s\" not found\n\nSearched in:", key)
 	for _, file := range searchedFiles {
 		errorMsg += fmt.Sprintf("\n- %s", file)
 	}

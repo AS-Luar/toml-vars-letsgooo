@@ -86,7 +86,7 @@ func resolveStringVariables(str string, data map[string]interface{}) (string, bo
 		// Resolve the variable
 		value, found := resolveVariablePath(variablePath, data)
 		if !found {
-			return "", hasVariables, fmt.Errorf("Error: Variable '%s' referenced but not found\n\nAvailable variables:\n%s",
+			return "", hasVariables, fmt.Errorf("variable '%s' referenced but not found\n\nAvailable variables:\n%s",
 				variablePath, getAvailableVariablesList(data))
 		}
 
@@ -145,11 +145,11 @@ func detectCircularDependencies(data map[string]interface{}) error {
 	for variable := range dependencies {
 		if hasCycle(variable, dependencies, visited, recStack) {
 			cycle := findCycle(variable, dependencies)
-			return fmt.Errorf("Error: Circular dependency detected: %s", strings.Join(cycle, " → "))
+			return fmt.Errorf("circular dependency detected: %s", strings.Join(cycle, " → "))
 		}
 	}
 
-	return fmt.Errorf("Error: Maximum resolution passes exceeded. Possible unresolvable variable references")
+	return fmt.Errorf("maximum resolution passes exceeded, possible unresolvable variable references")
 }
 
 // collectDependencies builds a map of variable dependencies
