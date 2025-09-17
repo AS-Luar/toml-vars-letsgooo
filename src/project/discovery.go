@@ -118,7 +118,7 @@ func resolveKey(data map[string]interface{}, key string) (string, bool) {
 	return "", false
 }
 
-// findValueInFiles searches for a key across all TOML files
+// findValueInFiles searches for a key across all TOML files with variable resolution
 func findValueInFiles(key string) (string, error) {
 	files, err := findTOMLFiles()
 	if err != nil {
@@ -140,13 +140,19 @@ func findValueInFiles(key string) (string, error) {
 
 		searchedFiles = append(searchedFiles, file)
 
-		// Check if key exists in this file
-		if value, found := resolveKey(data, key); found {
+		// Resolve variables within this file
+		resolvedData, err := resolveVariables(data)
+		if err != nil {
+			return "", fmt.Errorf("Error resolving variables in %s: %v", file, err)
+		}
+
+		// Check if key exists in this file after variable resolution
+		if value, found := resolveKey(resolvedData, key); found {
 			return value, nil
 		}
 
 		// Collect available keys for error message
-		collectKeys(data, "", &availableKeys)
+		collectKeys(resolvedData, "", &availableKeys)
 	}
 
 	// Generate helpful error message

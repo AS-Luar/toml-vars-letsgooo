@@ -1,7 +1,9 @@
 package tmvar
 
 import (
+	"fmt"
 	"os"
+	"strings"
 	"testing"
 	"time"
 )
@@ -176,4 +178,119 @@ func TestErrorHandling(t *testing.T) {
 	}()
 
 	Get("nonexistent.key")
+}
+
+func TestVariableSubstitution(t *testing.T) {
+	// Create a test TOML file with variable references
+	testFile := "test_variables.toml"
+	content := `
+[database]
+host = "localhost"
+port = 5432
+name = "testdb"
+
+[connection]
+primary = "postgres://{{database.host}}:{{database.port}}/{{database.name}}"
+backup = "{{connection.primary}}_backup"
+
+[paths]
+base = "/app"
+uploads = "{{paths.base}}/uploads"
+logs = "{{paths.base}}/logs"
+`
+
+	// Write test file
+	err := os.WriteFile(testFile, []byte(content), 0644)
+	if err != nil {
+		t.Fatalf("Failed to create test file: %v", err)
+	}
+	defer os.Remove(testFile)
+
+	// Clear cache before testing
+	clearCache()
+
+	// Test basic variable substitution
+	if got := Get("connection.primary"); got != "postgres://localhost:5432/testdb" {
+		t.Errorf("Get(\"connection.primary\") = %v, want %v", got, "postgres://localhost:5432/testdb")
+	}
+
+	// Test nested variable substitution
+	if got := Get("connection.backup"); got != "postgres://localhost:5432/testdb_backup" {
+		t.Errorf("Get(\"connection.backup\") = %v, want %v", got, "postgres://localhost:5432/testdb_backup")
+	}
+
+	// Test cross-section references
+	if got := Get("paths.uploads"); got != "/app/uploads" {
+		t.Errorf("Get(\"paths.uploads\") = %v, want %v", got, "/app/uploads")
+	}
+}
+
+func TestCircularDependencyDetection(t *testing.T) {
+	// Create a test TOML file with circular dependencies
+	testFile := "test_circular.toml"
+	content := `
+[circular]
+a = "{{circular.b}}"
+b = "{{circular.a}}"
+`
+
+	// Write test file
+	err := os.WriteFile(testFile, []byte(content), 0644)
+	if err != nil {
+		t.Fatalf("Failed to create test file: %v", err)
+	}
+	defer os.Remove(testFile)
+
+	// Clear cache before testing
+	clearCache()
+
+	// This should panic with circular dependency error
+	defer func() {
+		if r := recover(); r == nil {
+			t.Errorf("Expected panic for circular dependency, but didn't panic")
+		} else {
+			// Check that the error message mentions circular dependency
+			errorMsg := fmt.Sprintf("%v", r)
+			if !strings.Contains(errorMsg, "Circular dependency") {
+				t.Errorf("Expected circular dependency error, got: %v", errorMsg)
+			}
+		}
+	}()
+
+	Get("circular.a")
+}
+
+func TestUndefinedVariableReference(t *testing.T) {
+	// Create a test TOML file with undefined variable reference
+	testFile := "test_undefined.toml"
+	content := `
+[test]
+value = "{{missing.variable}}"
+existing = "valid"
+`
+
+	// Write test file
+	err := os.WriteFile(testFile, []byte(content), 0644)
+	if err != nil {
+		t.Fatalf("Failed to create test file: %v", err)
+	}
+	defer os.Remove(testFile)
+
+	// Clear cache before testing
+	clearCache()
+
+	// This should panic with undefined variable error
+	defer func() {
+		if r := recover(); r == nil {
+			t.Errorf("Expected panic for undefined variable, but didn't panic")
+		} else {
+			// Check that the error message mentions the missing variable
+			errorMsg := fmt.Sprintf("%v", r)
+			if !strings.Contains(errorMsg, "missing.variable") {
+				t.Errorf("Expected undefined variable error, got: %v", errorMsg)
+			}
+		}
+	}()
+
+	Get("test.value")
 }
