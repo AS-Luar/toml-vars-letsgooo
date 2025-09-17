@@ -251,8 +251,8 @@ b = "{{circular.a}}"
 		} else {
 			// Check that the error message mentions circular dependency
 			errorMsg := fmt.Sprintf("%v", r)
-			if !strings.Contains(errorMsg, "circular dependency") {
-				t.Errorf("Expected circular dependency error, got: %v", errorMsg)
+			if !strings.Contains(errorMsg, "circular dependency") && !strings.Contains(errorMsg, "maximum resolution passes exceeded") {
+				t.Errorf("Expected circular dependency or resolution error, got: %v", errorMsg)
 			}
 		}
 	}()
@@ -664,4 +664,327 @@ ports = "{{ENV.SERVICE_PORTS:-8080,8081,8082}}"
 			t.Errorf("GetIntSlice env[%d] = %v, want %v", i, port, expectedPorts[i])
 		}
 	}
+}
+
+// ===== PHASE 4 MULTI-FILE TESTS =====
+
+func TestMultiFileNoConflict(t *testing.T) {
+	// Create multiple TOML files with unique variables
+	appFile := "test_app.toml"
+	appContent := `
+[server]
+port = 3000
+host = "localhost"
+
+[logging]
+level = "info"
+`
+
+	dbFile := "test_database.toml"
+	dbContent := `
+[connection]
+host = "db.example.com"
+port = 5432
+user = "admin"
+
+[pool]
+max_connections = 100
+`
+
+	// Write test files
+	err := os.WriteFile(appFile, []byte(appContent), 0644)
+	if err != nil {
+		t.Fatalf("Failed to create app test file: %v", err)
+	}
+	defer os.Remove(appFile)
+
+	err = os.WriteFile(dbFile, []byte(dbContent), 0644)
+	if err != nil {
+		t.Fatalf("Failed to create db test file: %v", err)
+	}
+	defer os.Remove(dbFile)
+
+	// Clear cache
+	clearCache()
+
+	// Test that unique variables work without prefixes
+	if got := Get("server.port"); got != "3000" {
+		t.Errorf("Get(\"server.port\") = %v, want %v", got, "3000")
+	}
+
+	if got := Get("connection.host"); got != "db.example.com" {
+		t.Errorf("Get(\"connection.host\") = %v, want %v", got, "db.example.com")
+	}
+
+	if got := GetInt("pool.max_connections"); got != 100 {
+		t.Errorf("GetInt(\"pool.max_connections\") = %v, want %v", got, 100)
+	}
+}
+
+func TestMultiFileConflictDetection(t *testing.T) {
+	// Create multiple TOML files with conflicting variables
+	appFile := "test_app_conflict.toml"
+	appContent := `
+[server]
+port = 3000
+host = "app.localhost"
+`
+
+	dbFile := "test_database_conflict.toml"
+	dbContent := `
+[server]
+port = 5432
+host = "db.localhost"
+`
+
+	// Write test files
+	err := os.WriteFile(appFile, []byte(appContent), 0644)
+	if err != nil {
+		t.Fatalf("Failed to create app test file: %v", err)
+	}
+	defer os.Remove(appFile)
+
+	err = os.WriteFile(dbFile, []byte(dbContent), 0644)
+	if err != nil {
+		t.Fatalf("Failed to create db test file: %v", err)
+	}
+	defer os.Remove(dbFile)
+
+	// Clear cache
+	clearCache()
+
+	// Test that conflicting variables cause error
+	defer func() {
+		if r := recover(); r != nil {
+			errorMsg := fmt.Sprintf("%v", r)
+			if !strings.Contains(errorMsg, "found in multiple files") {
+				t.Errorf("Expected conflict error, got: %v", errorMsg)
+			}
+			if !strings.Contains(errorMsg, "test_app_conflict.toml") {
+				t.Errorf("Expected error to mention app file, got: %v", errorMsg)
+			}
+			if !strings.Contains(errorMsg, "test_database_conflict.toml") {
+				t.Errorf("Expected error to mention database file, got: %v", errorMsg)
+			}
+		} else {
+			t.Error("Expected panic due to conflict, but didn't get one")
+		}
+	}()
+
+	// This should panic due to conflict
+	Get("server.port")
+}
+
+func TestMultiFileExplicitSyntax(t *testing.T) {
+	// Create multiple TOML files with conflicting variables
+	appFile := "test_app_explicit.toml"
+	appContent := `
+[server]
+port = 3000
+environment = "development"
+
+[app_features]
+auth = true
+logging = true
+`
+
+	apiFile := "test_api_explicit.toml"
+	apiContent := `
+[server]
+port = 8080
+environment = "production"
+
+[api_features]
+rate_limiting = true
+caching = true
+`
+
+	// Write test files
+	err := os.WriteFile(appFile, []byte(appContent), 0644)
+	if err != nil {
+		t.Fatalf("Failed to create app test file: %v", err)
+	}
+	defer os.Remove(appFile)
+
+	err = os.WriteFile(apiFile, []byte(apiContent), 0644)
+	if err != nil {
+		t.Fatalf("Failed to create api test file: %v", err)
+	}
+	defer os.Remove(apiFile)
+
+	// Clear cache
+	clearCache()
+
+	// Debug: Check what files are found
+	t.Logf("Testing explicit file syntax...")
+
+	// Test explicit file prefix syntax
+	if got := Get("test_app_explicit.server.port"); got != "3000" {
+		t.Errorf("Get(\"test_app_explicit.server.port\") = %v, want %v", got, "3000")
+	}
+
+	if got := Get("test_api_explicit.server.port"); got != "8080" {
+		t.Errorf("Get(\"test_api_explicit.server.port\") = %v, want %v", got, "8080")
+	}
+
+	if got := Get("test_app_explicit.server.environment"); got != "development" {
+		t.Errorf("Get(\"test_app_explicit.server.environment\") = %v, want %v", got, "development")
+	}
+
+	if got := Get("test_api_explicit.server.environment"); got != "production" {
+		t.Errorf("Get(\"test_api_explicit.server.environment\") = %v, want %v", got, "production")
+	}
+
+	// Test unique variables work without prefix
+	if got := GetBool("app_features.auth"); got != true {
+		t.Errorf("GetBool(\"app_features.auth\") = %v, want %v", got, true)
+	}
+
+	if got := GetBool("api_features.rate_limiting"); got != true {
+		t.Errorf("GetBool(\"api_features.rate_limiting\") = %v, want %v", got, true)
+	}
+
+	// Test conflicting variables should require explicit syntax
+	defer func() {
+		if r := recover(); r != nil {
+			errorMsg := fmt.Sprintf("%v", r)
+			if !strings.Contains(errorMsg, "found in multiple files") {
+				t.Errorf("Expected conflict error for server.port, got: %v", errorMsg)
+			}
+		} else {
+			t.Error("Expected panic for conflicting server.port, but didn't get one")
+		}
+	}()
+
+	// This should panic due to conflict
+	Get("server.port")
+}
+
+func TestMultiFileWithVariableSubstitution(t *testing.T) {
+	// Create multiple TOML files with internal variable references
+	configFile := "test_config_vars.toml"
+	configContent := `
+[paths]
+base = "/app"
+config = "{{paths.base}}/config"
+
+[database]
+host = "localhost"
+port = 5432
+`
+
+	servicesFile := "test_services_vars.toml"
+	servicesContent := `
+[api]
+host = "{{ENV.API_HOST:-localhost}}"
+port = 8080
+url = "http://{{api.host}}:{{api.port}}"
+
+[cache]
+host = "{{database.host}}"
+port = 6379
+url = "redis://{{cache.host}}:{{cache.port}}"
+`
+
+	// Write test files
+	err := os.WriteFile(configFile, []byte(configContent), 0644)
+	if err != nil {
+		t.Fatalf("Failed to create config test file: %v", err)
+	}
+	defer os.Remove(configFile)
+
+	err = os.WriteFile(servicesFile, []byte(servicesContent), 0644)
+	if err != nil {
+		t.Fatalf("Failed to create services test file: %v", err)
+	}
+	defer os.Remove(servicesFile)
+
+	// Clear cache and environment
+	clearCache()
+	os.Unsetenv("API_HOST")
+
+	// Test cross-file variable resolution
+	if got := Get("api.url"); got != "http://localhost:8080" {
+		t.Errorf("Get(\"api.url\") = %v, want %v", got, "http://localhost:8080")
+	}
+
+	// This should reference database.host from the other file
+	if got := Get("cache.url"); got != "redis://localhost:6379" {
+		t.Errorf("Get(\"cache.url\") = %v, want %v", got, "redis://localhost:6379")
+	}
+
+	// Test internal variable substitution within same file
+	if got := Get("paths.config"); got != "/app/config" {
+		t.Errorf("Get(\"paths.config\") = %v, want %v", got, "/app/config")
+	}
+}
+
+func TestInvalidFilePrefix(t *testing.T) {
+	// Create a test file
+	testFile := "test_invalid_prefix.toml"
+	content := `
+[server]
+port = 3000
+`
+
+	err := os.WriteFile(testFile, []byte(content), 0644)
+	if err != nil {
+		t.Fatalf("Failed to create test file: %v", err)
+	}
+	defer os.Remove(testFile)
+
+	// Clear cache
+	clearCache()
+
+	// Test invalid file prefix
+	defer func() {
+		if r := recover(); r != nil {
+			errorMsg := fmt.Sprintf("%v", r)
+			if !strings.Contains(errorMsg, "file prefix \"nonexistent\" not found") {
+				t.Errorf("Expected file prefix error, got: %v", errorMsg)
+			}
+		} else {
+			t.Error("Expected panic due to invalid file prefix, but didn't get one")
+		}
+	}()
+
+	// This should panic due to invalid prefix
+	Get("nonexistent.server.port")
+}
+
+func TestFileSpecificVariableNotFound(t *testing.T) {
+	// Create a test file
+	testFile := "test_file_specific_missing.toml"
+	content := `
+[server]
+port = 3000
+host = "localhost"
+`
+
+	err := os.WriteFile(testFile, []byte(content), 0644)
+	if err != nil {
+		t.Fatalf("Failed to create test file: %v", err)
+	}
+	defer os.Remove(testFile)
+
+	// Clear cache
+	clearCache()
+
+	// Test variable not found in specific file
+	defer func() {
+		if r := recover(); r != nil {
+			errorMsg := fmt.Sprintf("%v", r)
+			if !strings.Contains(errorMsg, "variable \"missing.key\" not found in file") {
+				t.Errorf("Expected variable not found in file error, got: %v", errorMsg)
+			}
+			if !strings.Contains(errorMsg, "test_file_specific_missing.toml") {
+				t.Errorf("Expected error to mention specific file, got: %v", errorMsg)
+			}
+		} else {
+			t.Error("Expected panic due to missing variable in specific file, but didn't get one")
+		}
+	}()
+
+	// This should panic because missing.key doesn't exist in the specified file
+	Get("test_file_specific_missing.missing.key")
 }

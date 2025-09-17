@@ -132,7 +132,34 @@ func resolveStringVariables(str string, data map[string]interface{}) (string, bo
 }
 
 // resolveVariablePath resolves a dot-notation path like "section.key" to its value
+// In namespaced structure, searches across all files
 func resolveVariablePath(path string, data map[string]interface{}) (string, bool) {
+	parts := strings.Split(path, ".")
+
+	// If this looks like a file-prefixed path (file.section.key), try direct resolution
+	if len(parts) >= 2 {
+		if fileData, exists := data[parts[0]]; exists {
+			if fileMap, ok := fileData.(map[string]interface{}); ok {
+				remainingPath := strings.Join(parts[1:], ".")
+				return resolveKeyInData(remainingPath, fileMap)
+			}
+		}
+	}
+
+	// Search across all files for the variable
+	for _, fileData := range data {
+		if fileMap, ok := fileData.(map[string]interface{}); ok {
+			if value, found := resolveKeyInData(path, fileMap); found {
+				return value, true
+			}
+		}
+	}
+
+	return "", false
+}
+
+// resolveKeyInData resolves a key within a specific data structure
+func resolveKeyInData(path string, data map[string]interface{}) (string, bool) {
 	parts := strings.Split(path, ".")
 
 	current := data
