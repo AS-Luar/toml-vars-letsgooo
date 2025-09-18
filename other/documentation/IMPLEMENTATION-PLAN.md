@@ -1,18 +1,18 @@
-# tmvar Implementation Plan
+# tomv Implementation Plan
 
 ## Strategic Implementation Overview
 
-This document outlines the development plan for the tmvar library following value-first development principles and the established framework patterns.
+This document outlines the development plan for the tomv library following value-first development principles and the established framework patterns.
 
 ## File Structure
 
 ```
-src/project/tmvar/
+src/project/tomv/
 ├── api.go           # Public API (Get, GetInt, GetOr functions)
 ├── discovery.go     # File finding + conflict resolution
 ├── parser.go        # TOML parsing + ALL variable substitution
 ├── cache.go         # File monitoring + smart caching
-└── tmvar_test.go    # Comprehensive test suite
+└── tomv_test.go    # Comprehensive test suite
 ```
 
 **Design Rationale:**
@@ -25,14 +25,14 @@ src/project/tmvar/
 ## Phase-Based Development Strategy
 
 ### Phase 1: Core Foundation (Days 1-2)
-**Deliverable:** Working `tmvar.Get()` with single TOML file (no substitution)
+**Deliverable:** Working `tomv.Get()` with single TOML file (no substitution)
 
 **Success Criteria:**
 ```go
 // This works at end of Phase 1:
-port := tmvar.GetInt("server.port")     // From config.toml, basic lookup only
-host := tmvar.Get("database.host")      // String retrieval working
-debug := tmvar.GetBool("app.debug")     // Type conversion working
+port := tomv.GetInt("server.port")     // From config.toml, basic lookup only
+host := tomv.Get("database.host")      // String retrieval working
+debug := tomv.GetBool("app.debug")     // Type conversion working
 ```
 
 **Implementation Order:**
@@ -83,8 +83,8 @@ uploads = "{{paths.base}}/uploads"
 
 ```go
 // This API call works:
-dbURL := tmvar.Get("database.url")  // Returns: "postgres://localhost:5432/myapp"
-uploadPath := tmvar.Get("paths.uploads")  // Returns: "/app/uploads"
+dbURL := tomv.Get("database.url")  // Returns: "postgres://localhost:5432/myapp"
+uploadPath := tomv.Get("paths.uploads")  // Returns: "/app/uploads"
 ```
 
 **Implementation:**
@@ -133,9 +133,9 @@ url = "postgres://{{ENV.DB_HOST:-localhost}}:{{database.port}}/myapp"
 
 ```go
 // With PORT=8080 in environment:
-port := tmvar.GetInt("server.port")  // Returns: 8080
+port := tomv.GetInt("server.port")  // Returns: 8080
 // Without PORT in environment:
-port := tmvar.GetInt("server.port")  // Returns: 3000 (default)
+port := tomv.GetInt("server.port")  // Returns: 3000 (default)
 ```
 
 **Implementation:**
@@ -159,11 +159,11 @@ port := tmvar.GetInt("server.port")  // Returns: 3000 (default)
 **Success Criteria:**
 ```go
 // This works at end of Phase 4:
-appPort := tmvar.GetInt("app.server.port")          // From config/app.toml
-dbPort := tmvar.GetInt("database.server.port")      // From config/database.toml
+appPort := tomv.GetInt("app.server.port")          // From config/app.toml
+dbPort := tomv.GetInt("database.server.port")      // From config/database.toml
 
 // Automatic conflict detection:
-port := tmvar.GetInt("server.port")  // Error if exists in multiple files
+port := tomv.GetInt("server.port")  // Error if exists in multiple files
 ```
 
 **Conflict Resolution Error Format:**
@@ -173,8 +173,8 @@ Error: Variable "server.port" found in multiple files:
 - config/database.toml
 
 Use explicit syntax:
-- tmvar.Get("app.server.port")
-- tmvar.Get("database.server.port")
+- tomv.Get("app.server.port")
+- tomv.Get("database.server.port")
 ```
 
 **Implementation:**
@@ -223,7 +223,7 @@ Use explicit syntax:
 ## Development Workflow
 
 ### 1. Dependency Management
-- Initialize Go module: `go mod init github.com/username/tmvar`
+- Initialize Go module: `go mod init github.com/username/tomv`
 - Add required dependency: `github.com/BurntSushi/toml`
 - Maintain minimal external dependencies
 

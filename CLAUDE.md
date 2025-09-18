@@ -15,12 +15,12 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ### Target API
 ```go
 // External API - works like os.Getenv()
-port := tmvar.GetInt("server.port")
-host := tmvar.Get("database.host")
-enabled := tmvar.GetBool("features.login")
+port := tomv.GetInt("server.port")
+host := tomv.Get("database.host")
+enabled := tomv.GetBool("features.login")
 
 // With defaults
-timeout := tmvar.GetIntOr("api.timeout", 30)
+timeout := tomv.GetIntOr("api.timeout", 30)
 ```
 
 ### Variable Syntax Examples
@@ -63,7 +63,7 @@ toml-vars-letsgooo/
 ├── cache.go            # File monitoring and smart caching
 ├── discovery.go        # Multi-file discovery and conflict resolution
 ├── parser.go           # Variable substitution engine
-├── tmvar_test.go       # Comprehensive test suite
+├── tomv_test.go       # Comprehensive test suite
 ├── go.mod              # Module definition
 ├── go.sum              # Dependencies
 └── other/              # Documentation and specs
@@ -150,16 +150,16 @@ go get github.com/DeprecatedLuar/toml-vars-letsgooo
 import "github.com/DeprecatedLuar/toml-vars-letsgooo"
 
 func main() {
-    port := tmvar.GetInt("server.port")
-    host := tmvar.Get("database.host")
-    timeout := tmvar.GetDurationOr("api.timeout", 30*time.Second)
+    port := tomv.GetInt("server.port")
+    host := tomv.Get("database.host")
+    timeout := tomv.GetDurationOr("api.timeout", 30*time.Second)
 }
 ```
 
 ## Implementation Status
 
 ### ✅ Phase 1: Core External API & File Discovery (Completed)
-- ✅ External API: `tmvar.Get()`, `tmvar.GetInt()`, `tmvar.GetBool()`
+- ✅ External API: `tomv.Get()`, `tomv.GetInt()`, `tomv.GetBool()`
 - ✅ Recursive file discovery system (`*.toml` search)
 - ✅ Smart file monitoring with timestamp-based caching
 - ✅ Environment variable injection: `{{ENV.VAR:-default}}`
@@ -257,8 +257,8 @@ url = "postgres://{{server.host}}:5432/myapp"
 ```
 
 ```go
-port := tmvar.GetInt("server.port")           // Returns: 3000
-dbURL := tmvar.Get("database.url")            // Returns: "postgres://localhost:5432/myapp"
+port := tomv.GetInt("server.port")           // Returns: 3000
+dbURL := tomv.Get("database.url")            // Returns: "postgres://localhost:5432/myapp"
 ```
 
 ### Multi-File with Conflicts
@@ -274,11 +274,11 @@ port = 8080
 
 ```go
 // This causes helpful error:
-tmvar.Get("server.port")  // Error: "found in multiple files, use app.server.port or api.server.port"
+tomv.Get("server.port")  // Error: "found in multiple files, use app.server.port or api.server.port"
 
 // Explicit syntax works:
-appPort := tmvar.GetInt("app.server.port")    // Returns: 3000
-apiPort := tmvar.GetInt("api.server.port")    // Returns: 8080
+appPort := tomv.GetInt("app.server.port")    // Returns: 3000
+apiPort := tomv.GetInt("api.server.port")    // Returns: 8080
 ```
 
 ### Environment Variables

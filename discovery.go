@@ -1,4 +1,4 @@
-package tmvar
+package tomv
 
 import (
 	"fmt"
@@ -273,7 +273,7 @@ func findValueInFiles(key string) (string, error) {
 		}
 		errorMsg += "\n\nUse explicit syntax:"
 		for _, fileData := range foundFiles {
-			errorMsg += fmt.Sprintf("\n- tmvar.Get(\"%s.%s\")", fileData.Prefix, key)
+			errorMsg += fmt.Sprintf("\n- tomv.Get(\"%s.%s\")", fileData.Prefix, key)
 		}
 		return "", fmt.Errorf("%s", errorMsg)
 	}

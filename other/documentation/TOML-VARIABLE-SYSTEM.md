@@ -1,4 +1,4 @@
-# tmvar - TOML Variables Library
+# tomv - TOML Variables Library
 
 ## Core Problem Statement
 
@@ -28,8 +28,8 @@ A **plug-and-play Go library** that works exactly like environment variables but
 - **Always current values:** Smart file monitoring ensures configuration is never stale
 - **Conflict-free:** Package name and syntax chosen to avoid collisions
 
-### Package Name: `tmvar`
-**Import:** `import "github.com/user/tmvar"`
+### Package Name: `tomv`
+**Import:** `import "github.com/user/tomv"`
 **Reasoning:** 
 - "TOML Variables" - clear, specific meaning
 - Short enough to type frequently
@@ -41,22 +41,22 @@ A **plug-and-play Go library** that works exactly like environment variables but
 ### External API (Go Code)
 ```go
 // Basic value retrieval
-port := tmvar.GetInt("server.port")
-host := tmvar.Get("database.host")
-enabled := tmvar.GetBool("features.login")
+port := tomv.GetInt("server.port")
+host := tomv.Get("database.host")
+enabled := tomv.GetBool("features.login")
 
 // With default values
-timeout := tmvar.GetIntOr("api.timeout", 30)
-debug := tmvar.GetBoolOr("app.debug", false)
+timeout := tomv.GetIntOr("api.timeout", 30)
+debug := tomv.GetBoolOr("app.debug", false)
 
 // Type-safe variants
-duration := tmvar.GetDuration("cache.ttl")  // Parses "5m", "30s"
-ratio := tmvar.GetFloat("display.ratio")
-tags := tmvar.GetStringSlice("app.tags")    // Comma-separated values
+duration := tomv.GetDuration("cache.ttl")  // Parses "5m", "30s"
+ratio := tomv.GetFloat("display.ratio")
+tags := tomv.GetStringSlice("app.tags")    // Comma-separated values
 
 // Conflict resolution (when same key exists in multiple files)
-appPort := tmvar.GetInt("app.server.port")      # From app.toml
-dbPort := tmvar.GetInt("database.server.port")  # From database.toml
+appPort := tomv.GetInt("app.server.port")      # From app.toml
+dbPort := tomv.GetInt("database.server.port")  # From database.toml
 ```
 
 **Syntax Rationale:** Function-style calls are conflict-free, type-safe, and follow Go conventions.
@@ -119,8 +119,8 @@ Error: Variable "server.port" found in multiple files:
 - settings/database.toml
 
 Use explicit syntax:
-- tmvar.Get("app.server.port")
-- tmvar.Get("database.server.port")
+- tomv.Get("app.server.port")
+- tomv.Get("database.server.port")
 ```
 
 **Explicit file reference syntax:** `filename.section.key`
@@ -263,7 +263,7 @@ backup_db = "{{computed.db_url}}_backup"
 
 ### Phase 1: Core Foundation (Week 1)
 **Goals:** Basic external resolution with file discovery
-- Implement `tmvar.Get()`, `tmvar.GetInt()`, `tmvar.GetBool()`
+- Implement `tomv.Get()`, `tomv.GetInt()`, `tomv.GetBool()`
 - Basic recursive TOML file discovery 
 - Smart file monitoring (timestamp-based reload)
 - Environment variable override behavior
@@ -271,8 +271,8 @@ backup_db = "{{computed.db_url}}_backup"
 
 **Success Criteria:**
 ```go
-port := tmvar.GetInt("server.port")  // Works with smart caching
-host := tmvar.Get("database.host")   // Always current values
+port := tomv.GetInt("server.port")  // Works with smart caching
+host := tomv.Get("database.host")   // Always current values
 // Internal variables - not yet
 ```
 
@@ -327,12 +327,12 @@ debug_mode = false
 
 ```go
 // main.go
-import "github.com/user/tmvar"
+import "github.com/user/tomv"
 
 func main() {
-    port := tmvar.GetIntOr("server.port", 8080)
-    dbURL := tmvar.Get("database.url")
-    loginRequired := tmvar.GetBool("features.login_required")
+    port := tomv.GetIntOr("server.port", 8080)
+    dbURL := tomv.Get("database.url")
+    loginRequired := tomv.GetBool("features.login_required")
     
     fmt.Printf("Server starting on port %d\n", port)
 }
@@ -361,10 +361,10 @@ cache = "{{paths.base}}/cache"
 
 ```go
 // Usage
-dbURL := tmvar.Get("connection.primary")
+dbURL := tomv.Get("connection.primary")
 // Returns: "postgres://admin@localhost:5432/myapp"
 
-uploadPath := tmvar.Get("paths.uploads") 
+uploadPath := tomv.Get("paths.uploads") 
 // Returns: "/app/uploads"
 ```
 
@@ -382,12 +382,12 @@ project/
 
 ```go
 // Automatic discovery - no configuration needed
-serverPort := tmvar.GetInt("server.port")      // Finds in any .toml file
-dbHost := tmvar.Get("database.host")           // Searches all files
+serverPort := tomv.GetInt("server.port")      // Finds in any .toml file
+dbHost := tomv.Get("database.host")           // Searches all files
 
 // Explicit file reference if conflicts
-appPort := tmvar.GetInt("app.server.port")     # From config/app.toml  
-deployPort := tmvar.GetInt("deployment.server.port") # From settings/deployment.toml
+appPort := tomv.GetInt("app.server.port")     # From config/app.toml  
+deployPort := tomv.GetInt("deployment.server.port") # From settings/deployment.toml
 ```
 
 ## Integration Guidelines
@@ -397,7 +397,7 @@ deployPort := tmvar.GetInt("deployment.server.port") # From settings/deployment.
 # TOML file has: port = "{{ENV.PORT:-3000}}"
 # Environment variable provides value
 PORT=8080 go run main.go
-# tmvar.GetInt("server.port") returns 8080
+# tomv.GetInt("server.port") returns 8080
 
 # Standard application environment variables work as expected
 NODE_ENV=production DATABASE_URL=postgres://... go run main.go
@@ -407,15 +407,15 @@ docker run -e NODE_ENV=production -e DATABASE_URL=postgres://prod... myapp
 
 # No environment variables - uses TOML defaults
 go run main.go
-# tmvar.GetInt("server.port") returns 3000 (default from {{ENV.PORT:-3000}})
+# tomv.GetInt("server.port") returns 3000 (default from {{ENV.PORT:-3000}})
 ```
 
 ### Simple Usage Pattern
 ```go
 // Environment variables explicitly referenced in TOML
-port := tmvar.GetInt("server.port")    // Resolves {{ENV.PORT:-3000}}
-dbURL := tmvar.Get("database.url")     // Resolves {{ENV.DATABASE_URL:-default}}
-debug := tmvar.GetBool("app.debug")    // Resolves {{ENV.DEBUG:-false}}
+port := tomv.GetInt("server.port")    // Resolves {{ENV.PORT:-3000}}
+dbURL := tomv.Get("database.url")     // Resolves {{ENV.DATABASE_URL:-default}}
+debug := tomv.GetBool("app.debug")    // Resolves {{ENV.DEBUG:-false}}
 
 // All environment variable usage visible in TOML files
 // No magic overrides - everything explicit and git-tracked
@@ -430,14 +430,14 @@ debug := tmvar.GetBool("app.debug")    // Resolves {{ENV.DEBUG:-false}}
 ### Error Handling Patterns
 ```go
 // Fail-fast approach (recommended for required configuration)
-port := tmvar.GetInt("server.port") // Panics if missing - catches config errors early
+port := tomv.GetInt("server.port") // Panics if missing - catches config errors early
 
 // Safe approach (for optional configuration)  
-timeout := tmvar.GetIntOr("api.timeout", 30) // Provides sensible default
+timeout := tomv.GetIntOr("api.timeout", 30) // Provides sensible default
 
 // Check existence before use
-if tmvar.Exists("features.experimental") {
-    experimental := tmvar.GetBool("features.experimental")
+if tomv.Exists("features.experimental") {
+    experimental := tomv.GetBool("features.experimental")
     // Use experimental features
 }
 ```
@@ -473,7 +473,7 @@ if tmvar.Exists("features.experimental") {
 - **No surprises:** Always current values, environment variables override TOML
 
 ### Technical Goals  
-- **Environment variable simplicity:** `tmvar.Get()` works just like `os.Getenv()`
+- **Environment variable simplicity:** `tomv.Get()` works just like `os.Getenv()`
 - **Always current values:** Smart file monitoring without user intervention
 - **Conflict resolution:** Clear path forward when configuration conflicts arise
 - **Standard override behavior:** Environment variables work exactly as expected

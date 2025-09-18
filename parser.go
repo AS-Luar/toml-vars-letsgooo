@@ -1,4 +1,4 @@
-package tmvar
+package tomv
 
 import (
 	"fmt"
