@@ -84,7 +84,7 @@ func resolveStringVariables(str string, data map[string]interface{}) (string, bo
 		}
 
 		hasVariables = true
-		placeholder := match[0] // Full match: {{section.key}}
+		placeholder := match[0]  // Full match: {{section.key}}
 		variablePath := match[1] // Just the path: section.key
 
 		// Check if this is an environment variable
